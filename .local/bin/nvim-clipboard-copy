@@ -1,0 +1,4 @@
+#!/bin/bash
+# Wrapper for wl-copy to prevent blocking
+# Read from stdin and copy to clipboard
+wl-copy --foreground --type text/plain < /dev/stdin
