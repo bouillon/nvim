@@ -5,23 +5,34 @@ set cursorline
 set noswapfile
 set scrolloff=7
 
-set tabstop=4
-set softtabstop=4
-set shiftwidth=4
+" Indentation settings
+set tabstop=2
+set softtabstop=2
+set shiftwidth=2
 set expandtab
 set autoindent
+set smartindent
 set fileformat=unix
 filetype indent on      " load filetype-specific indent files
 
-" for tabulation
-set smartindent
-set tabstop=2
-set expandtab
-set shiftwidth=2
-
-" horizontal split open below and right
+" Horizontal split open below and right
 set splitbelow
 set splitright
+
+" Clipboard for KDE Plasma Wayland (uses Klipper via qdbus)
+set clipboard=unnamedplus
+let g:clipboard = {
+  \   'name': 'KDEKlipper',
+  \   'copy': {
+  \      '+': ['nvim-clip-copy'],
+  \      '*': ['nvim-clip-copy'],
+  \    },
+  \   'paste': {
+  \      '+': ['nvim-clip-paste'],
+  \      '*': ['nvim-clip-paste'],
+  \   },
+  \   'cache_enabled': 0,
+  \ }
 
 inoremap jk <esc>
 
@@ -192,9 +203,9 @@ local on_attach = function(client, bufnr)
   buf_set_keymap('n', '<space>ca', '<cmd>lua vim.lsp.buf.code_action()<CR>', opts)
   buf_set_keymap('n', 'gr', '<cmd>lua vim.lsp.buf.references()<CR>', opts)
   buf_set_keymap('n', '<space>e', '<cmd>lua vim.diagnostic.open_float()<CR>', opts)
-  buf_set_keymap('n', '[d', '<cmd>lua vim.lsp.diagnostic.goto_prev()<CR>', opts)
-  buf_set_keymap('n', ']d', '<cmd>lua vim.lsp.diagnostic.goto_next()<CR>', opts)
-  buf_set_keymap('n', '<space>q', '<cmd>lua vim.lsp.diagnostic.set_loclist()<CR>', opts)
+  buf_set_keymap('n', '[d', '<cmd>lua vim.diagnostic.goto_prev()<CR>', opts)
+  buf_set_keymap('n', ']d', '<cmd>lua vim.diagnostic.goto_next()<CR>', opts)
+  buf_set_keymap('n', '<space>q', '<cmd>lua vim.diagnostic.setloclist()<CR>', opts)
   buf_set_keymap('n', '<space>f', '<cmd>lua vim.lsp.buf.format()<CR>', opts)
 
   require "lsp_signature".on_attach({
@@ -374,7 +385,7 @@ function! s:Bclose(bang, buffer)
       " Numbers of listed buffers which are not the target to be deleted.
       let blisted = filter(range(1, bufnr('$')), 'buflisted(v:val) && v:val != btarget')
       " Listed, not target, and not displayed.
-      let bhidden = filter(eopy(blisted), 'bufwinnr(v:val) < 0')
+      let bhidden = filter(copy(blisted), 'bufwinnr(v:val) < 0')
       " Take the first buffer, if any (could be more intelligent).
       let bjump = (bhidden + blisted + [-1])[0]
       if bjump > 0
@@ -424,13 +435,9 @@ nnoremap ,g <cmd>Telescope live_grep<cr>
 nnoremap H gT
 nnoremap L gt
 
-" Clipboard integration for KDE Plasma Wayland
-" Copy to clipboard in visual/normal mode
-vnoremap <leader>y :w !wl-copy-persist<CR><CR>
-nnoremap <leader>y :%w !wl-copy-persist<CR><CR>
-" Paste from clipboard
-nnoremap <leader>p :r !wl-paste-kde<CR>
-vnoremap <leader>p c<ESC>:r !wl-paste-kde<CR>
+" Clipboard now uses native integration via clipboard=unnamedplus
+" Standard y/p commands work with system clipboard
+" Use "+y and "+p if you need explicit clipboard register
 
 " Autosave plugin
 
@@ -445,9 +452,6 @@ vnoremap <leader>p c<ESC>:r !wl-paste-kde<CR>
 lua << EOF
 require('telescope').load_extension('fzf')
 EOF
-
-" Fast component creating for React app
-command CreateComponent :terminal '/Users/alexeygoloburdin/code/lms/frontend/createcomponent.py'
 
 " White colors for LSP messages in code
 set termguicolors

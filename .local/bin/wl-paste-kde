@@ -1,7 +1,0 @@
-#!/bin/bash
-# KDE Plasma clipboard paste wrapper
-# Uses qdbus to access KDE's klipper directly
-
-# Get clipboard from KDE's klipper
-qdbus6 org.kde.klipper /klipper org.kde.klipper.klipper.getClipboardContents 2>/dev/null
-exit 0
