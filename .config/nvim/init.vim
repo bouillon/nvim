@@ -19,20 +19,24 @@ filetype indent on      " load filetype-specific indent files
 set splitbelow
 set splitright
 
-" Clipboard for KDE Plasma Wayland (uses Klipper via qdbus)
+" System clipboard integration
+" macOS: works out of the box via pbcopy/pbpaste
+" Linux KDE Plasma Wayland: uses Klipper via qdbus6
 set clipboard=unnamedplus
-let g:clipboard = {
-  \   'name': 'KDEKlipper',
-  \   'copy': {
-  \      '+': ['nvim-clip-copy'],
-  \      '*': ['nvim-clip-copy'],
-  \    },
-  \   'paste': {
-  \      '+': ['nvim-clip-paste'],
-  \      '*': ['nvim-clip-paste'],
-  \   },
-  \   'cache_enabled': 0,
-  \ }
+if has('linux')
+  let g:clipboard = {
+    \   'name': 'KDEKlipper',
+    \   'copy': {
+    \      '+': ['nvim-clip-copy'],
+    \      '*': ['nvim-clip-copy'],
+    \    },
+    \   'paste': {
+    \      '+': ['nvim-clip-paste'],
+    \      '*': ['nvim-clip-paste'],
+    \   },
+    \   'cache_enabled': 0,
+    \ }
+endif
 
 inoremap jk <esc>
 
@@ -56,14 +60,7 @@ Plug 'xiyaowong/nvim-transparent'
 " Plug 'Pocco81/auto-save.nvim'
 Plug 'justinmk/vim-sneak'
 
-" JS/JSX/TS
-Plug 'pangloss/vim-javascript'
-Plug 'leafgarland/typescript-vim'
-Plug 'peitalin/vim-jsx-typescript'
-Plug 'maxmellon/vim-jsx-pretty'
-" TS from here https://jose-elias-alvarez.medium.com/configuring-neovims-lsp-client-for-typescript-development-5789d58ea9c
-Plug 'nvimtools/none-ls.nvim'
-Plug 'jose-elias-alvarez/nvim-lsp-ts-utils'
+" TS/JS handled by LSP + Treesitter (add nvim-treesitter for best results)
 Plug 'nvim-lua/plenary.nvim'
 
 Plug 'prettier/vim-prettier', {
@@ -72,7 +69,7 @@ Plug 'prettier/vim-prettier', {
 
 Plug 'bmatcuk/stylelint-lsp'
 
-Plug 'nvim-telescope/telescope.nvim', { 'tag': '0.1.5' }
+Plug 'nvim-telescope/telescope.nvim'
 Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'make' }
 
 " Convenient floating terminal window
@@ -80,11 +77,9 @@ Plug 'nvim-telescope/telescope-fzf-native.nvim', { 'do': 'make' }
 
 Plug 'ray-x/lsp_signature.nvim'
 
-Plug 'lspcontainers/lspcontainers.nvim'
-
 call plug#end()
 
-" Leader bind to space
+" Leader bind to comma
 let mapleader = ","
 
 " Netrw file explorer settings
@@ -122,13 +117,21 @@ endif
 nnoremap ,<space> :nohlsearch<CR>
 
 lua << EOF
+-- Show source (Ruff/Pyright) in diagnostic floats
+vim.diagnostic.config({
+  float = {
+    source = true,
+  },
+  virtual_text = {
+    source = true,
+  },
+})
+
 -- Set completeopt to have a better completion experience
 vim.o.completeopt = 'menuone,noselect'
 
 -- luasnip setup
 local luasnip = require 'luasnip'
-local async = require "plenary.async"
-
 -- nvim-cmp setup
 local cmp = require 'cmp'
 cmp.setup {
@@ -152,19 +155,19 @@ cmp.setup {
       select = true,
     },
     ['<Tab>'] = function(fallback)
-      if vim.fn.pumvisible() == 1 then
-        vim.fn.feedkeys(vim.api.nvim_replace_termcodes('<C-n>', true, true, true), 'n')
+      if cmp.visible() then
+        cmp.select_next_item()
       elseif luasnip.expand_or_jumpable() then
-        vim.fn.feedkeys(vim.api.nvim_replace_termcodes('<Plug>luasnip-expand-or-jump', true, true, true), '')
+        luasnip.expand_or_jump()
       else
         fallback()
       end
     end,
     ['<S-Tab>'] = function(fallback)
-      if vim.fn.pumvisible() == 1 then
-        vim.fn.feedkeys(vim.api.nvim_replace_termcodes('<C-p>', true, true, true), 'n')
+      if cmp.visible() then
+        cmp.select_prev_item()
       elseif luasnip.jumpable(-1) then
-        vim.fn.feedkeys(vim.api.nvim_replace_termcodes('<Plug>luasnip-jump-prev', true, true, true), '')
+        luasnip.jump(-1)
       else
         fallback()
       end
@@ -235,15 +238,14 @@ lint.linters_by_ft = {
     typescriptreact = {
         "eslint_d"
     },
-    python = {"ruff"}
 }
 
 -- trigger linter by leave the insert mode or save
 vim.api.nvim_create_autocmd({ "InsertLeave", "BufWritePost" }, {
     callback = function()
-        local lint_status, lint = pcall(require, "lint")
+        local lint_status, lint_mod = pcall(require, "lint")
         if lint_status then
-            lint.try_lint()
+            lint_mod.try_lint()
         end
     end,
 })
@@ -251,34 +253,14 @@ vim.api.nvim_create_autocmd({ "InsertLeave", "BufWritePost" }, {
 -- end of pylint
 
 -- TS setup
-local buf_map = function(bufnr, mode, lhs, rhs, opts)
-    vim.api.nvim_buf_set_keymap(bufnr, mode, lhs, rhs, opts or {
-        silent = true,
-    })
-end
-
 vim.lsp.config('ts_ls', {
     on_attach = function(client, bufnr)
-        client.server_capabilities.document_formatting = false
-        client.server_capabilities.document_range_formatting = false
-        local ts_utils = require("nvim-lsp-ts-utils")
-        ts_utils.setup({})
-        ts_utils.setup_client(client)
-        buf_map(bufnr, "n", "gs", ":TSLspOrganize<CR>")
-        buf_map(bufnr, "n", "gi", ":TSLspRenameFile<CR>")
-        buf_map(bufnr, "n", "go", ":TSLspImportAll<CR>")
+        client.server_capabilities.documentFormattingProvider = false
+        client.server_capabilities.documentRangeFormattingProvider = false
         on_attach(client, bufnr)
     end,
 })
 vim.lsp.enable('ts_ls')
-
-local null_ls = require("null-ls")
-null_ls.setup({
-    sources = {
-        null_ls.builtins.formatting.prettier
-    },
-    on_attach = on_attach
-})
 
 -- Stylelint format after save
 vim.lsp.config('stylelint_lsp', {
@@ -401,13 +383,13 @@ endfunction
 command! -bang -complete=buffer -nargs=? Bclose call <SID>Bclose(<q-bang>, <q-args>)
 nnoremap <silent> <Leader>bd :Bclose<CR>
 
-map gn :bn<cr>
-map gp :bp<cr>
-map gw :Bclose<cr>
+nnoremap gn :bn<cr>
+nnoremap gp :bp<cr>
+nnoremap gw :Bclose<cr>
 
 " Run Python and C files by Ctrl+h
-autocmd FileType python map <buffer> <C-h> :w<CR>:exec '!python3.11' shellescape(@%, 1)<CR>
-autocmd FileType python imap <buffer> <C-h> <esc>:w<CR>:exec '!python3.11' shellescape(@%, 1)<CR>
+autocmd FileType python map <buffer> <C-h> :w<CR>:exec '!python3' shellescape(@%, 1)<CR>
+autocmd FileType python imap <buffer> <C-h> <esc>:w<CR>:exec '!python3' shellescape(@%, 1)<CR>
 
 autocmd FileType c map <buffer> <C-h> :w<CR>:exec '!gcc' shellescape(@%, 1) '-o out; ./out'<CR>
 autocmd FileType c imap <buffer> <C-h> <esc>:w<CR>:exec '!gcc' shellescape(@%, 1) '-o out; ./out'<CR>
@@ -453,11 +435,10 @@ lua << EOF
 require('telescope').load_extension('fzf')
 EOF
 
-" White colors for LSP messages in code
-set termguicolors
-hi DiagnosticError guifg=White
-hi DiagnosticWarn  guifg=White
-hi DiagnosticInfo  guifg=White
-hi DiagnosticHint  guifg=White
+" Colors for LSP diagnostic messages
+hi DiagnosticError guifg=#ff6c6b
+hi DiagnosticWarn  guifg=#ECBE7B
+hi DiagnosticInfo  guifg=#51afef
+hi DiagnosticHint  guifg=#c678dd
 
 
