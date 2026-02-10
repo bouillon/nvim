@@ -6,13 +6,38 @@ Personal neovim configuration with LSP support for Python, TypeScript, Rust, and
 Features
 --------
 
-- LSP integration: Pyright, Ruff, TypeScript, Rust Analyzer, Stylelint, YAML
-- Autocompletion via nvim-cmp
-- Linting via nvim-lint (eslint_d for JS/TS)
-- Formatting via Prettier (JS/TS/CSS/etc.)
-- Telescope for fuzzy finding
-- Gruvbox colorscheme with transparency support
-- YAML schema validation (Kubernetes, Rook/Ceph CRDs)
+LSP Integration
+~~~~~~~~~~~~~~~
+
+- **Python**: Pyright (type checking) + Ruff (linting/formatting, uses local ``.venv`` if available)
+- **TypeScript/JavaScript**: ts_ls + eslint_d linting + Prettier formatting
+- **Rust**: rust-analyzer
+- **CSS/SCSS**: Stylelint LSP
+- **YAML**: yaml-language-server with custom schema validation (Kubernetes, Rook/Ceph CRDs)
+
+Editor Features
+~~~~~~~~~~~~~~~
+
+- Autocompletion via nvim-cmp (trigger with ``<C-Space>``)
+- Snippet support via LuaSnip
+- Telescope fuzzy finder (``,f`` for files, ``,g`` for grep)
+- Gruvbox colorscheme with transparency
+- vim-sneak for quick navigation
+
+Key Bindings
+~~~~~~~~~~~~
+
+- ``jk`` - Exit insert mode
+- ``gd`` - Go to definition
+- ``K`` - Hover documentation
+- ``<space>f`` - Format buffer
+- ``<space>ca`` - Code actions
+- ``<space>rn`` - Rename symbol
+- ``[d`` / ``]d`` - Navigate diagnostics
+- ``gn`` / ``gp`` - Next/previous buffer
+- ``gw`` - Close buffer
+- ``H`` / ``L`` - Previous/next tab
+- ``<C-h>`` - Run current file (Python, C, Go, Shell)
 
 Installation
 ------------
