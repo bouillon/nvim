@@ -6,12 +6,13 @@ Personal neovim configuration with LSP support for Python, TypeScript, Rust, and
 Features
 --------
 
-- LSP integration: Pyright, Ruff, TypeScript, Rust Analyzer, Stylelint
+- LSP integration: Pyright, Ruff, TypeScript, Rust Analyzer, Stylelint, YAML
 - Autocompletion via nvim-cmp
 - Linting via nvim-lint (eslint_d for JS/TS)
 - Formatting via Prettier (JS/TS/CSS/etc.)
 - Telescope for fuzzy finding
 - Gruvbox colorscheme with transparency support
+- YAML schema validation (Kubernetes, Rook/Ceph CRDs)
 
 Installation
 ------------
@@ -49,5 +50,37 @@ Install these tools for full functionality:
 - `eslint_d <https://github.com/mantoni/eslint_d.js>`_
 - `prettier <https://prettier.io/>`_
 - `rust-analyzer <https://rust-analyzer.github.io/>`_ (for Rust)
+- `yaml-language-server <https://github.com/redhat-developer/yaml-language-server>`_ (YAML LSP)
 
 After installation, run ``:PlugInstall`` in neovim to install plugins.
+
+YAML Schema Validation
+----------------------
+
+The configuration includes yaml-language-server with custom schema mappings:
+
+==================== ====================================
+File pattern         Schema
+==================== ====================================
+``**/*.k8s.yaml``    Kubernetes (from schemaStore)
+``**/*.ceph.yaml``   Rook CephCluster CRD
+``**/*.kadm.yaml``   Permissive (kubeadm/kubelet configs)
+==================== ====================================
+
+JSON Schemas Setup
+~~~~~~~~~~~~~~~~~~
+
+Create a ``~/jsonschemas`` symlink pointing to your schema files:
+
+.. code-block:: bash
+
+    ln -s /path/to/your/schemas ~/jsonschemas
+
+Required schema files:
+
+- ``rook-cephcluster.schema.json`` - Rook CephCluster CRD schema
+- ``permissive.schema.json`` - Permissive schema for kubeadm/kubelet configs
+
+The nvim config uses ``$HOME`` to resolve the path dynamically.
+
+To add more schemas, edit the ``yamlls`` config in ``init.vim``.

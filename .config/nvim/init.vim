@@ -320,6 +320,34 @@ vim.lsp.config('rust_analyzer', {
     }
 })
 vim.lsp.enable('rust_analyzer')
+
+local home = os.getenv("HOME")
+local schema_path = "file://" .. home .. "/jsonschemas/"
+
+vim.lsp.config('yamlls', {
+    on_attach = on_attach,
+    settings = {
+        yaml = {
+            schemaStore = { enable = true },
+            validate = true,
+            completion = true,
+            hover = true,
+            format = { enable = true },
+            schemas = {
+                kubernetes = { "**/*.k8s.yaml", "**/*.k8s.yml" },
+                [schema_path .. "rook-cephcluster.schema.json"] = {
+                    "**/*.ceph.yaml",
+                    "**/*.ceph.yml"
+                },
+                [schema_path .. "permissive.schema.json"] = {
+                    "**/*.kadm.yaml",
+                    "**/*.kadm.yml"
+                }
+            }
+        }
+    }
+})
+vim.lsp.enable('yamlls')
 EOF
 
 " Delete buffer while keeping window layout (don't close buffer's windows).
