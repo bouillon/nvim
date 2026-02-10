@@ -273,7 +273,19 @@ vim.lsp.config('stylelint_lsp', {
 })
 vim.lsp.enable('stylelint_lsp')
 
+-- Helper function to find ruff executable
+local function get_ruff_cmd()
+    -- Check for ruff in local .venv first
+    local venv_ruff = vim.fn.getcwd() .. '/.venv/bin/ruff'
+    if vim.fn.executable(venv_ruff) == 1 then
+        return venv_ruff
+    end
+    -- Fall back to global ruff
+    return 'ruff'
+end
+
 vim.lsp.config('ruff', {
+    cmd = { get_ruff_cmd(), 'server' },
     on_attach = on_attach,
     init_options = {
         settings = {
