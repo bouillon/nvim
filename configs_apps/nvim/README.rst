@@ -79,6 +79,13 @@ Install these tools for full functionality:
 
 After installation, run ``:PlugInstall`` in neovim to install plugins.
 
+for python:
+
+::
+
+    npm install -g pyright
+
+
 YAML Schema Validation
 ----------------------
 
