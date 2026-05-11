@@ -22,20 +22,38 @@ set splitright
 " System clipboard integration
 " macOS: works out of the box via pbcopy/pbpaste
 " Linux KDE Plasma Wayland: uses Klipper via qdbus6
+" Linux VM (via SSH to Mac iTerm2): uses OSC 52 escape sequence
 set clipboard=unnamedplus
 if has('linux')
-  let g:clipboard = {
-    \   'name': 'KDEKlipper',
-    \   'copy': {
-    \      '+': ['nvim-clip-copy'],
-    \      '*': ['nvim-clip-copy'],
-    \    },
-    \   'paste': {
-    \      '+': ['nvim-clip-paste'],
-    \      '*': ['nvim-clip-paste'],
-    \   },
-    \   'cache_enabled': 0,
-    \ }
+  if exists('$DISPLAY') || exists('$WAYLAND_DISPLAY')
+    " Native Linux desktop — use KDE Klipper
+    let g:clipboard = {
+      \   'name': 'KDEKlipper',
+      \   'copy': {
+      \      '+': ['nvim-clip-copy'],
+      \      '*': ['nvim-clip-copy'],
+      \    },
+      \   'paste': {
+      \      '+': ['nvim-clip-paste'],
+      \      '*': ['nvim-clip-paste'],
+      \   },
+      \   'cache_enabled': 0,
+      \ }
+  else
+    " SSH/VM — use OSC 52 (works with iTerm2)
+    let g:clipboard = {
+      \   'name': 'OSC52',
+      \   'copy': {
+      \      '+': ['osc52-copy'],
+      \      '*': ['osc52-copy'],
+      \    },
+      \   'paste': {
+      \      '+': [],
+      \      '*': [],
+      \   },
+      \   'cache_enabled': 0,
+      \ }
+  endif
 endif
 
 inoremap jk <esc>
