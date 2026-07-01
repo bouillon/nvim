@@ -40,19 +40,19 @@ if has('linux')
       \   'cache_enabled': 0,
       \ }
   else
-    " SSH/VM — use OSC 52 (works with iTerm2)
-    let g:clipboard = {
-      \   'name': 'OSC52',
-      \   'copy': {
-      \      '+': ['osc52-copy'],
-      \      '*': ['osc52-copy'],
-      \    },
-      \   'paste': {
-      \      '+': [],
-      \      '*': [],
-      \   },
-      \   'cache_enabled': 0,
-      \ }
+    " SSH / VM / Docker — Neovim BUILT-IN OSC 52 (no external script needed;
+    " works in any OSC52-capable terminal over ssh/docker/tmux, e.g. iTerm2).
+    " copy  -> system clipboard via terminal escape sequence
+    " paste -> reads nvim's own register (no terminal query, never hangs)
+    lua << EOF
+local osc = require('vim.ui.clipboard.osc52')
+local function paste() return { vim.split(vim.fn.getreg('"'), '\n'), vim.fn.getregtype('"') } end
+vim.g.clipboard = {
+  name = 'OSC 52',
+  copy  = { ['+'] = osc.copy('+'), ['*'] = osc.copy('*') },
+  paste = { ['+'] = paste, ['*'] = paste },
+}
+EOF
   endif
 endif
 
