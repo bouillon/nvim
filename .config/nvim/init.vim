@@ -25,21 +25,23 @@ set splitright
 " Linux VM (via SSH to Mac iTerm2): uses OSC 52 escape sequence
 set clipboard=unnamedplus
 if has('linux')
-  if exists('$DISPLAY') || exists('$WAYLAND_DISPLAY')
-    " Native Linux desktop — use KDE Klipper
+  if (exists('$DISPLAY') || exists('$WAYLAND_DISPLAY')) && executable('qdbus6')
+    " Native KDE Plasma desktop — Klipper via qdbus6, inline (no helper scripts).
+    " wl-copy/wl-paste are unreliable on Plasma (no wlroots data-control).
+    let s:klipper = 'org.kde.klipper /klipper org.kde.klipper.klipper.'
     let g:clipboard = {
       \   'name': 'KDEKlipper',
       \   'copy': {
-      \      '+': ['nvim-clip-copy'],
-      \      '*': ['nvim-clip-copy'],
+      \      '+': ['sh', '-c', 'qdbus6 ' . s:klipper . 'setClipboardContents "$(cat)"'],
+      \      '*': ['sh', '-c', 'qdbus6 ' . s:klipper . 'setClipboardContents "$(cat)"'],
       \    },
       \   'paste': {
-      \      '+': ['nvim-clip-paste'],
-      \      '*': ['nvim-clip-paste'],
+      \      '+': ['qdbus6', 'org.kde.klipper', '/klipper', 'org.kde.klipper.klipper.getClipboardContents'],
+      \      '*': ['qdbus6', 'org.kde.klipper', '/klipper', 'org.kde.klipper.klipper.getClipboardContents'],
       \   },
       \   'cache_enabled': 0,
       \ }
-  else
+  elseif !exists('$DISPLAY') && !exists('$WAYLAND_DISPLAY')
     " SSH / VM / Docker — Neovim BUILT-IN OSC 52 (no external script needed;
     " works in any OSC52-capable terminal over ssh/docker/tmux, e.g. iTerm2).
     " copy  -> system clipboard via terminal escape sequence
