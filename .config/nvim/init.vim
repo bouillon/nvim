@@ -341,6 +341,26 @@ vim.lsp.config('rust_analyzer', {
 })
 vim.lsp.enable('rust_analyzer')
 
+-- Go: gopls (toolchain + gopls installed in the devbox container, see Dockerfile).
+-- On the Mac gopls is absent (Santa) so it simply won't attach there.
+vim.lsp.config('gopls', {
+    on_attach = on_attach,
+    flags = {
+      debounce_text_changes = 150,
+    },
+    settings = {
+        gopls = {
+            -- bazel-* symlinks point into a Linux bazel cache; keep gopls out of them
+            directoryFilters = { "-bazel-bin", "-bazel-out", "-bazel-testlogs", "-bazel-private-cloud" },
+            -- private-cloud is a 38k-file module: loading it all per cold start takes
+            -- minutes. Scope the view to the open file's dir; go-to-definition still
+            -- loads imported packages on demand (module-wide diagnostics are dropped).
+            expandWorkspaceToModule = false,
+        }
+    }
+})
+vim.lsp.enable('gopls')
+
 local home = os.getenv("HOME")
 local schema_path = "file://" .. home .. "/jsonschemas/"
 
