@@ -156,7 +156,8 @@ local luasnip = require 'luasnip'
 local cmp = require 'cmp'
 cmp.setup {
   completion = {
-    autocomplete = false
+    -- menu pops up while typing; <C-Space> still opens it by hand
+    autocomplete = { cmp.TriggerEvent.TextChanged },
   },
   snippet = {
     expand = function(args)
@@ -198,6 +199,17 @@ cmp.setup {
     { name = 'luasnip' },
   },
 }
+-- tell every LSP server what nvim-cmp can take (snippets, resolve)
+vim.lsp.config('*', { capabilities = require('cmp_nvim_lsp').default_capabilities() })
+
+-- LSP progress ("gopls: Loading packages...") in the command line, cleared when done
+vim.api.nvim_create_autocmd('LspProgress', {
+  callback = function(ev)
+    local value = ev.data.params.value or {}
+    local msg = value.kind == 'end' and '' or vim.lsp.status()
+    vim.api.nvim_echo({ { msg:sub(1, vim.o.columns - 12) } }, false, {})
+  end,
+})
 
 -- Use an on_attach function to only map the following keys
 -- after the language server attaches to the current buffer
@@ -341,21 +353,43 @@ vim.lsp.config('rust_analyzer', {
 })
 vim.lsp.enable('rust_analyzer')
 
--- Go: gopls (toolchain + gopls installed in the devbox container, see Dockerfile).
--- On the Mac gopls is absent (Santa) so it simply won't attach there.
+-- Go: gopls. Per-project tuning comes from the environment so this config stays
+-- generic. Optional env vars:
+--   GOPLS_DIRECTORY_FILTERS  comma list appended to the bazel-* defaults
+--   GOPLS_LAZY_MODULES       comma list of module paths (from go.mod) that should
+--                            use a lazy GOPACKAGESDRIVER — for very large monorepos
+--                            where gopls otherwise loads the whole module first
+--   GOPLS_PACKAGESDRIVER     path to that driver binary
+local function go_split(s)
+    local t = {}; for x in (s or ''):gmatch('[^,]+') do t[#t + 1] = x end; return t
+end
+local go_lazy = {}
+for _, m in ipairs(go_split(os.getenv('GOPLS_LAZY_MODULES'))) do go_lazy[m] = true end
+local go_driver = os.getenv('GOPLS_PACKAGESDRIVER') or ''
+local go_filters = { "-bazel-bin", "-bazel-out", "-bazel-testlogs" }
+for _, f in ipairs(go_split(os.getenv('GOPLS_DIRECTORY_FILTERS'))) do go_filters[#go_filters + 1] = f end
 vim.lsp.config('gopls', {
+    -- plain gopls per nvim: no shared daemon (-remote=auto puts its socket in
+    -- $XDG_RUNTIME_DIR, which breaks when that dir belongs to another user)
+    cmd = { 'gopls' },
     on_attach = on_attach,
     flags = {
       debounce_text_changes = 150,
     },
+    before_init = function(_, config)
+        local gomod = config.root_dir and vim.fs.joinpath(config.root_dir, 'go.mod')
+        local module = ''
+        for _, line in ipairs(gomod and vim.fn.filereadable(gomod) == 1 and vim.fn.readfile(gomod, '', 30) or {}) do
+            module = line:match('^module%s+(%S+)') or module
+        end
+        if go_lazy[module] and go_driver ~= '' and vim.fn.executable(go_driver) == 1 then
+            config.settings.gopls.env = { GOPACKAGESDRIVER = go_driver }
+        end
+    end,
     settings = {
         gopls = {
-            -- bazel-* symlinks point into a Linux bazel cache; keep gopls out of them
-            directoryFilters = { "-bazel-bin", "-bazel-out", "-bazel-testlogs", "-bazel-private-cloud" },
-            -- private-cloud is a 38k-file module: loading it all per cold start takes
-            -- minutes. Scope the view to the open file's dir; go-to-definition still
-            -- loads imported packages on demand (module-wide diagnostics are dropped).
-            expandWorkspaceToModule = false,
+            -- bazel-* convenience symlinks point into the build cache; skip them
+            directoryFilters = go_filters,
         }
     }
 })
